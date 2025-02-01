@@ -1,0 +1,1 @@
+web gunicorn magazine.wsgi:application --timeout 300 --log-file -

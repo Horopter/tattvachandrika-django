@@ -1,1 +1,0 @@
-# tattavachandrika-heroku-django
