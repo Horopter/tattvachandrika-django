@@ -25,13 +25,25 @@ class SubscriptionPlan(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('SPLAN', 'subscription_plan'))
     version = me.StringField(max_length=10)
     name = me.StringField(max_length=255)
-    start_date = me.DateField()
-    subscription_price = me.DecimalField()
-    subscription_language = me.ReferenceField(SubscriptionLanguage, null=True)
-    subscription_mode = me.ReferenceField(SubscriptionMode, null=True)
-    duration_in_months = me.IntField()  # Duration in months
+    start_date = me.DateField(required=True)
+    subscription_price = me.DecimalField(required=True)
+    subscription_language = me.ReferenceField(SubscriptionLanguage, required=True)
+    subscription_mode = me.ReferenceField(SubscriptionMode, required=True)
+    duration_in_months = me.IntField(required=True)  # Duration in months
+
+    def clean(self):
+        """Perform validation checks before saving."""
+        if not self.subscription_language:
+            raise ValueError("Subscription language must be set.")
+        if not self.subscription_mode:
+            raise ValueError("Subscription mode must be set.")
+        if self.subscription_price <= 0:
+            raise ValueError("Subscription price must be a positive number.")
+        if self.duration_in_months <= 0:
+            raise ValueError("Duration in months must be greater than zero.")
 
     def save(self, *args, **kwargs):
+        self.clean()
         self.version = self.generate_version()
         self.name = f"{self.duration_in_months} months - {self.subscription_language.name} - {self.subscription_mode.name}"
         super(SubscriptionPlan, self).save(*args, **kwargs)
@@ -52,26 +64,27 @@ class SubscriptionPlan(me.Document):
                 return f"v{latest_version_number + 1}"
         else:
             return "v1"
-            
+       
 class PaymentMode(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('PMODE', 'payment_mode'))
     name = me.StringField(max_length=255)
 
 class MagazineSubscriber(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('SUBS', 'subscriber'))
-    name = me.StringField(max_length=255)
-    registration_number = me.StringField(max_length=255, unique=True)
-    address = me.StringField()
-    city_town = me.StringField(max_length=255)
-    state = me.StringField(max_length=255)
-    pincode = me.StringField(max_length=10)
-    phone = me.StringField(max_length=15)
-    email = me.EmailField(unique=True)
-    category = me.ReferenceField(SubscriberCategory, null=True)
-    stype = me.ReferenceField(SubscriberType, null=True)
-    notes = me.StringField()
-    hasActiveSubscriptions = me.BooleanField(default=False)
-    isDeleted = me.BooleanField(default=False)
+    name = me.StringField(max_length=255, required=True)  # Required field
+    registration_number = me.StringField(max_length=255, unique=True, required=True)  # Required field
+    address = me.StringField(required=False)  # Optional
+    city_town = me.StringField(max_length=255, required=False)  # Optional
+    district = me.StringField(max_length=255, required=False) # Optional
+    state = me.StringField(max_length=255, required=False)  # Optional
+    pincode = me.StringField(max_length=6, required=False)  # Optional
+    phone = me.StringField(max_length=10, required=False)  # Optional
+    email = me.EmailField(unique=True, required=True)  # Required field
+    category = me.ReferenceField(SubscriberCategory, null=True, required=False)  # Optional
+    stype = me.ReferenceField(SubscriberType, null=True, required=False)  # Optional
+    notes = me.StringField(required=False)  # Optional
+    hasActiveSubscriptions = me.BooleanField(default=False, required=False)  # Optional with default
+    isDeleted = me.BooleanField(default=False, required=False)  # Optional with default
     
     def get_subscriptions(self):
         return Subscription.objects.filter(subscriber=self)

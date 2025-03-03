@@ -18,11 +18,15 @@ class SubscriptionLanguageSerializer(DocumentSerializer):
         fields = ('_id', 'name')
 
 class SubscriptionModeSerializer(DocumentSerializer):
+    _id = serializers.CharField(required=True)
     class Meta:
         model = SubscriptionMode
         fields = ('_id', 'name')
 
 class SubscriptionPlanSerializer(DocumentSerializer):
+    subscription_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)  # Ensure price is required and has valid decimal format
+    duration_in_months = serializers.IntegerField(required=True, min_value=1)  # Ensure duration is required and greater than 0
+    
     subscription_language = serializers.PrimaryKeyRelatedField(queryset=SubscriptionLanguage.objects.all())
     subscription_mode = serializers.PrimaryKeyRelatedField(queryset=SubscriptionMode.objects.all())
 
@@ -30,10 +34,39 @@ class SubscriptionPlanSerializer(DocumentSerializer):
         model = SubscriptionPlan
         fields = ('_id', 'version', 'name', 'start_date', 'subscription_price', 'subscription_language', 'subscription_mode', 'duration_in_months')
 
+    def validate(self, data):
+        # Check for valid duration_in_months
+        duration = data.get('duration_in_months', None)
+        if duration is None:
+            if self.partial:  # Allow None for partial updates
+                return data
+            raise serializers.ValidationError("Duration in months is required.")
+        
+        if duration <= 0:
+            raise serializers.ValidationError({"duration_in_months": f"Duration in months must be greater than zero. {data.get('duration_in_months', None)}"})
+        
+        # Check for valid subscription_price
+        price = data.get('subscription_price', None)
+        if price is None:
+            if self.partial:  # Allow None for partial updates
+                return data
+            raise serializers.ValidationError("Price is required.")
+        
+        if price <= 0:
+            raise serializers.ValidationError({"subscription_price": "Subscription price must be a positive number."})
+        
+        return data
+
+
 class PaymentModeSerializer(DocumentSerializer):
     class Meta:
         model = PaymentMode
         fields = ['_id', 'name']
+
+    def validate(self, data):
+        if 'name' not in data or not data['name']:
+            raise serializers.ValidationError({'name': 'This field is required.'})
+        return data
         
 class SubscriptionSerializer(DocumentSerializer):
     subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
@@ -44,16 +77,33 @@ class SubscriptionSerializer(DocumentSerializer):
         fields = '__all__'
 
     def validate(self, data):
-        if 'subscription_plan' in data and isinstance(data['subscription_plan'], str):
-            try:
-                data['subscription_plan'] = SubscriptionPlan.objects.get(pk=data['subscription_plan'])
-            except SubscriptionPlan.DoesNotExist:
-                raise ValidationError({'subscription_plan': 'SubscriptionPlan matching query does not exist.'})
-        if 'payment_mode' in data and isinstance(data['payment_mode'], str):
-            try:
-                data['payment_mode'] = PaymentMode.objects.get(pk=data['payment_mode'])
-            except PaymentMode.DoesNotExist:
-                raise ValidationError({'payment_mode': 'PaymentMode matching query does not exist.'})
+        # Validate payment_mode
+        payment_mode_id = data.get('payment_mode')
+        if payment_mode_id and PaymentMode.objects.filter(pk=payment_mode_id.pk).count() == 0:
+            raise serializers.ValidationError({"payment_mode": "Payment mode does not exist."})
+
+        # Validate subscription_plan
+        subscription_plan_id = data.get('subscription_plan')
+        if subscription_plan_id and SubscriptionPlan.objects.filter(pk=subscription_plan_id.pk).count() == 0:
+            raise serializers.ValidationError({"subscription_plan": "Subscription plan does not exist."})
+
+        # Validate date logic
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        if start_date and end_date and end_date <= start_date:
+            raise serializers.ValidationError({"end_date": "End date must be after start date."})
+
+        # Check for duplicate subscriptions
+        subscriber = data.get('subscriber')
+        if (
+            subscriber
+            and subscription_plan_id
+            and Subscription.objects.filter(
+                subscriber=subscriber, subscription_plan=subscription_plan_id
+            ).count() > 0
+        ):
+            raise serializers.ValidationError("Duplicate subscription not allowed.")
+
         return data
 
 class MagazineSubscriberSerializer(DocumentSerializer):
