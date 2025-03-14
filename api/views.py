@@ -161,6 +161,24 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, obj)
         return obj
 
+    @action(detail=False, methods=['get'], url_path='search')
+    def search(self, request):
+        """
+        Search subscribers based on a given filter and query.
+        For example, if filter=name and query=Srihari, it will perform a case-insensitive search on the 'name' field.
+        """
+        search_filter = request.query_params.get('filter', None)
+        query = request.query_params.get('query', None)
+        queryset = self.get_queryset()
+
+        if search_filter and query:
+            # Use icontains for a case-insensitive partial match.
+            filter_kwargs = {f"{search_filter}__icontains": query}
+            queryset = queryset.filter(**filter_kwargs)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def activate(self, request, _id=None):
         try:
