@@ -588,3 +588,4 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
 
         return Response({"error": "Token not provided."}, status=status.HTTP_400_BAD_REQUEST)
+
