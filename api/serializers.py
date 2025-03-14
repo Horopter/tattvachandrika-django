@@ -3,26 +3,31 @@ from rest_framework import serializers
 from .models import MagazineSubscriber, Subscription, SubscriptionPlan, SubscriberCategory, SubscriberType, SubscriptionLanguage, SubscriptionMode, PaymentMode, AdminUser
 
 class SubscriberCategorySerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     class Meta:
         model = SubscriberCategory
         fields = ('_id', 'name')
 
 class SubscriberTypeSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     class Meta:
         model = SubscriberType
         fields = ('_id', 'name')
 
 class SubscriptionLanguageSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     class Meta:
         model = SubscriptionLanguage
         fields = ('_id', 'name')
 
 class SubscriptionModeSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     class Meta:
         model = SubscriptionMode
         fields = ('_id', 'name')
 
 class SubscriptionPlanSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     subscription_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)  # Ensure price is required and has valid decimal format
     duration_in_months = serializers.IntegerField(required=True, min_value=1)  # Ensure duration is required and greater than 0
     
@@ -58,6 +63,7 @@ class SubscriptionPlanSerializer(DocumentSerializer):
 
 
 class PaymentModeSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     class Meta:
         model = PaymentMode
         fields = ['_id', 'name']
@@ -68,6 +74,7 @@ class PaymentModeSerializer(DocumentSerializer):
         return data
         
 class SubscriptionSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
     subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
     payment_mode = serializers.PrimaryKeyRelatedField(queryset=PaymentMode.objects.all())
 
@@ -106,10 +113,25 @@ class SubscriptionSerializer(DocumentSerializer):
         return data
 
 class MagazineSubscriberSerializer(DocumentSerializer):
-    category = serializers.PrimaryKeyRelatedField(queryset=SubscriberCategory.objects.all())
-    stype = serializers.PrimaryKeyRelatedField(queryset=SubscriberType.objects.all())
+    _id = serializers.CharField(read_only=True)
+    category = serializers.PrimaryKeyRelatedField(
+        queryset=SubscriberCategory.objects.all(),
+        required=True
+    )
+    stype = serializers.PrimaryKeyRelatedField(
+        queryset=SubscriberType.objects.all(),
+        required=True
+    )
+    address = serializers.CharField(required=True)
+    city_town = serializers.CharField(required=True)
+    state = serializers.CharField(required=True)
+    pincode = serializers.CharField(required=True)
+    phone = serializers.CharField(required=True)
+    notes = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    hasActiveSubscriptions = serializers.BooleanField(required=False)
+    isDeleted = serializers.BooleanField(required=False)
     subscriptions = serializers.SerializerMethodField()
-    
+
     def get_subscriptions(self, obj):
         subscriptions = Subscription.objects.filter(subscriber=obj)
         return SubscriptionSerializer(subscriptions, many=True).data
