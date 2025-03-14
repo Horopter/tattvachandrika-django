@@ -18,7 +18,6 @@ class SubscriptionLanguageSerializer(DocumentSerializer):
         fields = ('_id', 'name')
 
 class SubscriptionModeSerializer(DocumentSerializer):
-    _id = serializers.CharField(required=True)
     class Meta:
         model = SubscriptionMode
         fields = ('_id', 'name')
