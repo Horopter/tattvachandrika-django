@@ -99,16 +99,16 @@ class SubscriptionSerializer(DocumentSerializer):
         if start_date and end_date and end_date <= start_date:
             raise serializers.ValidationError({"end_date": "End date must be after start date."})
 
-        # Check for duplicate subscriptions
+        # Check for duplicate subscriptions (exclude self.instance if updating)
         subscriber = data.get('subscriber')
-        if (
-            subscriber
-            and subscription_plan_id
-            and Subscription.objects.filter(
+        if subscriber and subscription_plan_id:
+            qs = Subscription.objects.filter(
                 subscriber=subscriber, subscription_plan=subscription_plan_id
-            ).count() > 0
-        ):
-            raise serializers.ValidationError("Duplicate subscription not allowed.")
+            )
+            if self.instance:
+                qs = qs.exclude(_id=self.instance._id)
+            if qs.count() > 0:
+                raise serializers.ValidationError("Duplicate subscription not allowed.")
 
         return data
 
