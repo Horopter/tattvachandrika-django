@@ -106,7 +106,7 @@ class SubscriptionSerializer(DocumentSerializer):
                 subscriber=subscriber, subscription_plan=subscription_plan_id
             )
             if self.instance:
-                qs = qs.exclude(pk=self.instance.id)
+                qs = qs.filter(_id__ne=self.instance.id)
             if qs.count() > 0:
                 raise serializers.ValidationError("Duplicate subscription not allowed.")
 
