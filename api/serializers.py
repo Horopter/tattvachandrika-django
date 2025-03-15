@@ -1,6 +1,7 @@
 from rest_framework_mongoengine.serializers import DocumentSerializer
 from rest_framework import serializers
 from .models import MagazineSubscriber, Subscription, SubscriptionPlan, SubscriberCategory, SubscriberType, SubscriptionLanguage, SubscriptionMode, PaymentMode, AdminUser
+from datetime import date
 
 class SubscriberCategorySerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
@@ -74,6 +75,49 @@ class PaymentModeSerializer(DocumentSerializer):
         return data
         
 class SubscriptionSerializer(DocumentSerializer):
+    _id = serializers.CharField(read_only=True)
+    subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
+    payment_mode = serializers.PrimaryKeyRelatedField(queryset=PaymentMode.objects.all())
+
+    class Meta:
+        model = Subscription
+        fields = '__all__'
+
+    def validate(self, data):
+        # Validate payment_mode
+        payment_mode_obj = data.get('payment_mode')
+        if payment_mode_obj and not PaymentMode.objects.filter(pk=payment_mode_obj.pk).exists():
+            raise serializers.ValidationError({"payment_mode": "Payment mode does not exist."})
+
+        # Validate subscription_plan
+        subscription_plan_obj = data.get('subscription_plan')
+        if subscription_plan_obj and not SubscriptionPlan.objects.filter(pk=subscription_plan_obj.pk).exists():
+            raise serializers.ValidationError({"subscription_plan": "Subscription plan does not exist."})
+
+        # Validate date logic
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        if start_date and end_date and end_date <= start_date:
+            raise serializers.ValidationError({"end_date": "End date must be after start date."})
+
+        # Automatically set active based on current date and end_date.
+        if end_date:
+            data["active"] = date.today() <= end_date
+        else:
+            data["active"] = True  # Or False, depending on your business logic
+
+        # Check for duplicate subscriptions (if not updating current instance)
+        subscriber = data.get('subscriber')
+        if subscriber and subscription_plan_obj:
+            qs = Subscription.objects.filter(
+                subscriber=subscriber, subscription_plan=subscription_plan_obj
+            )
+            if self.instance:
+                qs = qs.filter(_id__ne=self.instance.id)
+            if qs.count() > 0:
+                raise serializers.ValidationError("Duplicate subscription not allowed.")
+
+        return data
     _id = serializers.CharField(read_only=True)
     subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
     payment_mode = serializers.PrimaryKeyRelatedField(queryset=PaymentMode.objects.all())
