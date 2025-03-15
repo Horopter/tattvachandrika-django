@@ -101,6 +101,10 @@ class Subscription(me.Document):
     payment_date = me.DateField(null=True)
 
     def clean(self):
+        # If start_date is missing or not a proper date, use the calculated value.
+        if not self.start_date or not isinstance(self.start_date, datetime.date):
+            self.start_date = self.calculate_start_date()
+        self.end_date = self.calculate_end_date()
         # Update 'active' based on current date vs. end_date.
         if self.end_date and datetime.date.today() > self.end_date:
             self.active = False
@@ -108,16 +112,6 @@ class Subscription(me.Document):
             self.active = True
 
     def save(self, *args, **kwargs):
-        # If start_date is missing or not a proper date, use the calculated value.
-        if not self.start_date or not isinstance(self.start_date, datetime.date):
-            self.start_date = self.calculate_start_date()
-        # Only calculate end_date if it’s not provided.
-        if not self.end_date:
-            # You need a valid subscription_plan to calculate the end_date.
-            if self.subscription_plan:
-                self.end_date = self.calculate_end_date()
-            else:
-                raise ValueError("Subscription plan is required to calculate end_date")
         super(Subscription, self).save(*args, **kwargs)
         # Update hasActiveSubscriptions on the subscriber.
         now = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
