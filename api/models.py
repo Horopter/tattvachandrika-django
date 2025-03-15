@@ -100,6 +100,13 @@ class Subscription(me.Document):
     payment_mode = me.ReferenceField(PaymentMode, null=True)
     payment_date = me.DateField(null=True)
 
+    def clean(self):
+        # Update 'active' based on current date vs. end_date.
+        if self.end_date and datetime.date.today() > self.end_date:
+            self.active = False
+        else:
+            self.active = True
+
     def save(self, *args, **kwargs):
         self.start_date = self.calculate_start_date()
         self.end_date = self.calculate_end_date()
