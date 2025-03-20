@@ -105,17 +105,20 @@ class SubscriptionSerializer(DocumentSerializer):
             data["active"] = date.today() <= end_date
         else:
             data["active"] = True  # Or False, depending on your business logic
-
-        # Check for duplicate subscriptions (if not updating current instance)
+    
+        # Check for overlapping active subscriptions
         subscriber = data.get('subscriber')
-        if subscriber and subscription_plan_obj:
-            qs = Subscription.objects.filter(
-                subscriber=subscriber, subscription_plan=subscription_plan_obj
+        if subscriber and subscription_plan_obj and start_date and end_date:
+            overlap_qs = Subscription.objects.filter(
+                subscriber=subscriber,
+                subscription_plan=subscription_plan_obj,
+                start_date__lte=end_date,  # Existing subscription starts before new one ends
+                end_date__gte=start_date   # Existing subscription ends after new one starts
             )
             if self.instance:
-                qs = qs.filter(_id__ne=self.instance.id)
-            if qs.count() > 0:
-                raise serializers.ValidationError("Duplicate subscription not allowed.")
+                overlap_qs = overlap_qs.filter(_id__ne=self.instance.id)
+            if overlap_qs.count() > 0:
+                raise serializers.ValidationError("Duplicate subscription not allowed due to overlapping dates.")
 
         return data
     _id = serializers.CharField(read_only=True)
