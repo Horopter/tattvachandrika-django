@@ -147,7 +147,7 @@ class SubscriptionSerializer(DocumentSerializer):
         subscriber = data.get('subscriber')
         if subscriber and subscription_plan_id:
             qs = Subscription.objects.filter(
-                subscriber=subscriber, subscription_plan=subscription_plan_id
+                subscriber=subscriber, subscription_plan=subscription_plan_id, start_date=start_date, end_date=end_date
             )
             if self.instance:
                 qs = qs.filter(_id__ne=self.instance.id)
