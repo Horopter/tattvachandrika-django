@@ -72,14 +72,14 @@ class PaymentMode(me.Document):
 class MagazineSubscriber(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('SUBS', 'subscriber'))
     name = me.StringField(max_length=255, required=True)  # Required field
-    registration_number = me.StringField(max_length=255, unique=True, required=True)  # Required field
-    address = me.StringField(required=False)  # Optional
+    registration_number = me.StringField(max_length=255, unique=True, required=True)  # Optional
+    address = me.StringField(required=True)  # Optional
     city_town = me.StringField(max_length=255, required=False)  # Optional
     district = me.StringField(max_length=255, required=False) # Optional
     state = me.StringField(max_length=255, required=False)  # Optional
     pincode = me.StringField(max_length=6, required=False)  # Optional
     phone = me.StringField(max_length=10, required=False)  # Optional
-    email = me.EmailField(unique=True, required=True)  # Required field
+    email = me.EmailField(unique=True, required=False)  # Optional
     category = me.ReferenceField(SubscriberCategory, null=True, required=False)  # Optional
     stype = me.ReferenceField(SubscriberType, null=True, required=False)  # Optional
     notes = me.StringField(required=False)  # Optional
