@@ -1,7 +1,7 @@
 from rest_framework_mongoengine.serializers import DocumentSerializer
 from rest_framework import serializers
 from .models import MagazineSubscriber, Subscription, SubscriptionPlan, SubscriberCategory, SubscriberType, SubscriptionLanguage, SubscriptionMode, PaymentMode, AdminUser
-from datetime import date
+from datetime import date, strptime
 
 class SubscriberCategorySerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
@@ -88,6 +88,19 @@ class SubscriptionSerializer(DocumentSerializer):
         payment_mode_obj = data.get('payment_mode')
         if payment_mode_obj and not PaymentMode.objects.filter(pk=payment_mode_obj.pk).exists():
             raise serializers.ValidationError({"payment_mode": "Payment mode does not exist."})
+        
+        # Validate payment_date
+        payment_date_str = data.get('payment_date')
+        try:
+            # Check and parse the date string
+            payment_date = strptime(payment_date_str, "%Y-%m-%d").date()
+            
+            # Check if it's a future date
+            if payment_date > date.today():
+                raise ValueError("Payment date cannot be in the future.")
+        except ValueError:
+            # Raised either due to wrong format or invalid date logic
+            raise serializers.ValidationError("Invalid payment date. Make sure it's in YYYY-MM-DD format and not a future date.")
 
         # Validate subscription_plan
         subscription_plan_obj = data.get('subscription_plan')

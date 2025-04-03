@@ -68,17 +68,18 @@ class SubscriptionPlan(me.Document):
 class PaymentMode(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('PMODE', 'payment_mode'))
     name = me.StringField(max_length=255)
+    details = me.StringField(max_length=400)
 
 class MagazineSubscriber(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('SUBS', 'subscriber'))
     name = me.StringField(max_length=255, required=True)  # Required field
-    registration_number = me.StringField(max_length=255, unique=True, required=True)  # Optional
-    address = me.StringField(required=True)  # Optional
-    city_town = me.StringField(max_length=255, required=False)  # Optional
-    district = me.StringField(max_length=255, required=False) # Optional
-    state = me.StringField(max_length=255, required=False)  # Optional
-    pincode = me.StringField(max_length=6, required=False)  # Optional
-    phone = me.StringField(max_length=10, required=False)  # Optional
+    registration_number = me.StringField(max_length=255, unique=True, required=False)  # Optional
+    address = me.StringField(required=True)  # Required field
+    city_town = me.StringField(max_length=255, required=True)  # Required field
+    district = me.StringField(max_length=255, required=True) # Required field
+    state = me.StringField(max_length=255, required=True)  # Required field
+    pincode = me.StringField(max_length=6, required=True)  # Required field
+    phone = me.StringField(max_length=10, required=True)  # Required field
     email = me.EmailField(unique=True, required=False)  # Optional
     category = me.ReferenceField(SubscriberCategory, null=True, required=False)  # Optional
     stype = me.ReferenceField(SubscriberType, null=True, required=False)  # Optional
