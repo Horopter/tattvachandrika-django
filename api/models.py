@@ -1,5 +1,5 @@
 import mongoengine as me
-from datetime import datetime
+from datetime import datetime, date
 import calendar
 from .utils import generate_id
 import pytz
@@ -94,7 +94,7 @@ class Subscription(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('SUBSCR', 'subscription'))
     subscriber = me.ReferenceField(MagazineSubscriber, reverse_delete_rule=me.CASCADE)
     subscription_plan = me.ReferenceField(SubscriptionPlan, null=True)
-    start_date = me.DateField()
+    start_date = me.DateField(required=True)
     end_date = me.DateField()
     active = me.BooleanField(default=True)
     payment_status = me.StringField(max_length=50, choices=["Pending", "Paid", "Failed"], default="Pending")
@@ -103,11 +103,11 @@ class Subscription(me.Document):
 
     def clean(self):
         # If start_date is missing or not a proper date, use the calculated value.
-        if not self.start_date or not isinstance(self.start_date, datetime.date):
+        if not self.start_date or not isinstance(self.start_date, date):
             self.start_date = self.calculate_start_date()
         self.end_date = self.calculate_end_date()
         # Update 'active' based on current date vs. end_date.
-        if self.end_date and datetime.date.today() > self.end_date:
+        if self.end_date and date.today() > self.end_date:
             self.active = False
         else:
             self.active = True
@@ -123,10 +123,10 @@ class Subscription(me.Document):
         self.subscriber.save()
 
     def calculate_start_date(self):
-        today = datetime.date.today()
+        today = date.today()
         next_month = today.month + 1 if today.month < 12 else 1
         next_year = today.year if next_month != 1 else today.year + 1
-        return datetime.date(next_year, next_month, 10)
+        return date(next_year, next_month, 10)
 
     def calculate_end_date(self):
         duration = self.subscription_plan.duration_in_months
@@ -134,7 +134,7 @@ class Subscription(me.Document):
         end_year = start_date.year + ((start_date.month + duration - 1) // 12)
         end_month = (start_date.month + duration - 1) % 12 + 1
         last_day_of_month = calendar.monthrange(end_year, end_month)[1]
-        return datetime.date(end_year, end_month, last_day_of_month)
+        return date(end_year, end_month, last_day_of_month)
     
 class AdminUser(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('ADMIN', 'adminuser'))
