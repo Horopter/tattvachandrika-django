@@ -1,8 +1,7 @@
 from rest_framework_mongoengine.serializers import DocumentSerializer
 from rest_framework import serializers
 from .models import MagazineSubscriber, Subscription, SubscriptionPlan, SubscriberCategory, SubscriberType, SubscriptionLanguage, SubscriptionMode, PaymentMode, AdminUser
-from datetime import date
-import datetime
+from datetime import date, datetime
 
 class SubscriberCategorySerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
