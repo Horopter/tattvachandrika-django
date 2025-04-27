@@ -76,11 +76,11 @@ class MagazineSubscriber(me.Document):
     registration_number = me.StringField(max_length=255, unique=True, required=False)  # Optional
     address = me.StringField(required=True)  # Required field
     city_town = me.StringField(max_length=255, required=True)  # Required field
-    district = me.StringField(max_length=255, required=True) # Required field
+    district = me.StringField(max_length=255, required=False) # Optional
     state = me.StringField(max_length=255, required=True)  # Required field
     pincode = me.StringField(max_length=6, required=True)  # Required field
     phone = me.StringField(max_length=10, required=True)  # Required field
-    email = me.EmailField(unique=True, required=False)  # Optional
+    email = me.EmailField(required=False)  # Optional
     category = me.ReferenceField(SubscriberCategory, null=True, required=False)  # Optional
     stype = me.ReferenceField(SubscriberType, null=True, required=False)  # Optional
     notes = me.StringField(required=False)  # Optional
@@ -94,8 +94,8 @@ class Subscription(me.Document):
     _id = me.StringField(primary_key=True, default=lambda: generate_id('SUBSCR', 'subscription'))
     subscriber = me.ReferenceField(MagazineSubscriber, reverse_delete_rule=me.CASCADE)
     subscription_plan = me.ReferenceField(SubscriptionPlan, null=True)
-    start_date = me.DateField()
-    end_date = me.DateField()
+    start_date = me.DateField(required=True)
+    end_date = me.DateField(required=True)
     active = me.BooleanField(default=True)
     payment_status = me.StringField(max_length=50, choices=["Pending", "Paid", "Failed"], default="Pending")
     payment_mode = me.ReferenceField(PaymentMode, null=True)
