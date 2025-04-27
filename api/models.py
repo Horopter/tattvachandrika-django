@@ -95,7 +95,7 @@ class Subscription(me.Document):
     subscriber = me.ReferenceField(MagazineSubscriber, reverse_delete_rule=me.CASCADE)
     subscription_plan = me.ReferenceField(SubscriptionPlan, null=True)
     start_date = me.DateField(required=True)
-    end_date = me.DateField(required=True)
+    end_date = me.DateField(required=False)
     active = me.BooleanField(default=True)
     payment_status = me.StringField(max_length=50, choices=["Pending", "Paid", "Failed"], default="Pending")
     payment_mode = me.ReferenceField(PaymentMode, null=True)
