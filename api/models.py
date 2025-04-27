@@ -115,7 +115,7 @@ class Subscription(me.Document):
     def save(self, *args, **kwargs):
         super(Subscription, self).save(*args, **kwargs)
         # Update hasActiveSubscriptions on the subscriber.
-        now = datetime.datetime.now(pytz.timezone('Asia/Kolkata'))
+        now = datetime.now(pytz.timezone('Asia/Kolkata'))
         active_subs_count = Subscription.objects(
             subscriber=self.subscriber, end_date__gte=now, active=True
         ).count()
@@ -145,7 +145,7 @@ class AdminUser(me.Document):
     last_name = me.StringField(required=True)
     aadhaar = me.StringField(required=True, unique=True)
     mobile = me.StringField(required=True, unique=True)
-    created_at = me.DateTimeField(default=datetime.datetime.utcnow)
+    created_at = me.DateTimeField(default=datetime.now())
     last_login = me.DateTimeField(null=True)
     active = me.BooleanField(default=True)
 
@@ -156,7 +156,7 @@ class AdminUser(me.Document):
 
     def update_last_login(self):
         """Update last_login to current datetime when the user logs in."""
-        now = datetime.datetime.now()
+        now = datetime.now()
         self.last_login = now
         self.save()  # Save only the last_login field
 
