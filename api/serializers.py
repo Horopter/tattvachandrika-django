@@ -78,6 +78,7 @@ class SubscriptionSerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
     subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
     payment_mode = serializers.PrimaryKeyRelatedField(queryset=PaymentMode.objects.all())
+    payment_id = serializers.CharField(required=True)
 
     class Meta:
         model = Subscription
@@ -134,9 +135,6 @@ class SubscriptionSerializer(DocumentSerializer):
                 raise serializers.ValidationError("Duplicate subscription not allowed due to overlapping dates.")
 
         return data
-    _id = serializers.CharField(read_only=True)
-    subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
-    payment_mode = serializers.PrimaryKeyRelatedField(queryset=PaymentMode.objects.all())
 
     class Meta:
         model = Subscription
@@ -174,6 +172,7 @@ class SubscriptionSerializer(DocumentSerializer):
 
 class MagazineSubscriberSerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
     category = serializers.PrimaryKeyRelatedField(
         queryset=SubscriberCategory.objects.all(),
         required=True
@@ -182,6 +181,7 @@ class MagazineSubscriberSerializer(DocumentSerializer):
         queryset=SubscriberType.objects.all(),
         required=True
     )
+    email = serializers.CharField(required=False)
     address = serializers.CharField(required=True)
     city_town = serializers.CharField(required=True)
     state = serializers.CharField(required=True)
@@ -201,7 +201,8 @@ class MagazineSubscriberSerializer(DocumentSerializer):
         fields = [
             '_id', 'name', 'registration_number', 'address', 'city_town',
             'state', 'pincode', 'phone', 'email', 'category', 'stype',
-            'notes', 'hasActiveSubscriptions', 'isDeleted', 'subscriptions'
+            'notes', 'hasActiveSubscriptions', 'isDeleted', 'subscriptions',
+            'created_at'
         ]
 
 class AdminUserSerializer(DocumentSerializer):

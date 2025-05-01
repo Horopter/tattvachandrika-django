@@ -86,6 +86,7 @@ class MagazineSubscriber(me.Document):
     notes = me.StringField(required=False)  # Optional
     hasActiveSubscriptions = me.BooleanField(default=False, required=False)  # Optional with default
     isDeleted = me.BooleanField(default=False, required=False)  # Optional with default
+    created_at = me.DateTimeField(required=False, default=datetime.now()) # Optional with default
     
     def get_subscriptions(self):
         return Subscription.objects.filter(subscriber=self)
@@ -99,6 +100,7 @@ class Subscription(me.Document):
     active = me.BooleanField(default=True)
     payment_status = me.StringField(max_length=50, choices=["Pending", "Paid", "Failed"], default="Pending")
     payment_mode = me.ReferenceField(PaymentMode, null=True)
+    payment_id = me.ReferenceField(max_length=100)
     payment_date = me.DateField(null=True)
 
     def clean(self):
