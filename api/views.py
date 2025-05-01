@@ -179,15 +179,25 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post'], url_path='activate')
     def activate(self, request, _id=None):
-        try:
-            subscriber = self.get_object()
-            subscriber.isDeleted = False
-            subscriber.save()
-            return Response({'status': 'subscriber activated'}, status=status.HTTP_200_OK)
-        except MagazineSubscriber.DoesNotExist:
-            raise NotFound('Subscriber not found')
+        # 1. Grab the instance (will 404 if not found)
+        subscriber = self.get_object()
+
+        # 2. Idempotency: if already active, tell the client
+        if not subscriber.isDeleted:
+            return Response(
+                {'detail': 'Subscriber is already active.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Flip the flag and persist
+        subscriber.isDeleted = False
+        subscriber.save()
+
+        # 4. Re-serialize and return the full updated resource
+        data = self.get_serializer(subscriber).data
+        return Response(data, status=status.HTTP_200_OK)
 
     def perform_destroy(self, instance):
         instance.isDeleted = True
