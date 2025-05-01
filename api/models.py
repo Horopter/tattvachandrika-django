@@ -100,7 +100,7 @@ class Subscription(me.Document):
     active = me.BooleanField(default=True)
     payment_status = me.StringField(max_length=50, choices=["Pending", "Paid", "Failed"], default="Pending")
     payment_mode = me.ReferenceField(PaymentMode, null=True)
-    payment_id = me.ReferenceField('Payment',max_length=100)
+    payment_id = me.StringField(max_length=100)
     payment_date = me.DateField(null=True)
 
     def clean(self):
