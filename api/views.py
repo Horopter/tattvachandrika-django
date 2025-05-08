@@ -281,7 +281,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
     def generate_pdf_report(self, request):
         """
         Generates a PDF report with subscriber data fetched from the database, skipping empty strings.
-        Includes <status, category, type> in the header of each page.
+        Includes <status, category, type> in the header of each page, in A4 landscape mode.
         """
         try:
             # Fetch data from the report endpoint
@@ -289,85 +289,80 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
             subscriber_status = request.query_params.get('subscriberStatus', 'active')
             subscriber_type = request.query_params.get('subscriberType', None) or "ALL"
             subscriber_category = request.query_params.get('subscriberCategory', None) or "ALL"
-            report_data = self.report(request).data  # Use the existing `report` function to fetch data
+            report_data = self.report(request).data  # Use existing report method
 
-            # Initialize FPDF
-            pdf = FPDF()
+            # Initialize FPDF in landscape A4
+            pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.set_auto_page_break(auto=True, margin=15)
 
             def add_page_with_header():
                 pdf.add_page()
                 pdf.set_font("Arial", size=11, style='B')
-                header = f"Status: {subscriber_status.capitalize()} | Category: {subscriber_category} | Type: {subscriber_type}"
+                header = (f"Status: {subscriber_status.capitalize()} | Category: {subscriber_category}"
+                          f" | Type: {subscriber_type}")
                 pdf.cell(0, 10, header, align='C', ln=True)
-                pdf.ln(5)  # Add some space after the header to separate from the content
+                pdf.ln(5)
 
-            add_page_with_header()  # Add the first page with the header
+            add_page_with_header()
 
-            # Set base font size and other layout parameters
-            base_font_size = 11
-            pdf.set_font("Arial", size=base_font_size)
-
-            # Layout parameters
-            page_width = 210  # A4 page width in mm
-            page_height = 297  # A4 page height in mm
-            margin = 10  # Page margin
+            # Layout parameters for A4 landscape
+            page_width = 297  # A4 width in landscape mm
+            page_height = 210  # A4 height in landscape mm
+            margin = 10
             usable_width = page_width - 2 * margin
             usable_height = page_height - 2 * margin - 15  # Adjust for header
             column_width = usable_width / 2  # Two columns
-            box_height = usable_height / 5  # Five rows per column
+            box_height = usable_height / 5     # Five rows per column
 
-            # Draw table boundaries and add values
+            # Set base font
+            pdf.set_font("Arial", size=11)
+
             for index, subscriber in enumerate(report_data):
-                # Determine column and row positions for column-wise filling
-                column = index % 2  # 0 = first column, 1 = second column
-                row = (index // 2) % 5  # 5 rows per column
-
-                # Start a new page after 10 entries (5 rows per column * 2 columns)
+                # New page every 10 entries
                 if index > 0 and index % 10 == 0:
                     add_page_with_header()
 
-                # Calculate position
-                x_position = margin + (column * column_width)
-                y_position = margin + (row * box_height) + 15  # Offset to avoid header overlap
+                # Column and row
+                col = index % 2
+                row = (index // 2) % 5
 
-                # Draw a rectangle for the boundary
-                pdf.rect(x_position, y_position, column_width, box_height)
+                x = margin + col * column_width
+                y = margin + row * box_height + 15
 
-                # Handle None/null values
-                def sanitize(value):
-                    return str(value) if value not in [None, 'null', 'None', ""] else None
+                # Draw box
+                pdf.rect(x, y, column_width, box_height)
 
-                # Write subscriber details inside the rectangle
-                values = [
+                # Prepare values
+                def sanitize(val):
+                    return str(val) if val not in (None, '', 'null', 'None') else None
+
+                fields = [
                     sanitize(subscriber.get("Name")),
                     sanitize(subscriber.get("Address line 1")),
                     sanitize(subscriber.get("Address line 2")),
-                    sanitize(f"{subscriber.get('City', '')}, {subscriber.get('District', '')}".strip(", ")),
+                    sanitize(f"{subscriber.get('City', '')}, {subscriber.get('District', '')}".strip(", ")),  # City,District
                     sanitize(f"{subscriber.get('State', '')}, {subscriber.get('Pincode', '')}".strip(", ")),
                     sanitize(subscriber.get("Phone Number")),
                 ]
-                current_y = y_position + 2  # Padding inside the rectangle
-                pdf.set_xy(x_position + 2, current_y)  # Start writing with padding
 
-                # Write the values, skipping empty ones
-                for value in values:
-                    if value:  # Skip empty strings or None
-                        truncated_value = value[:char_limit - 3] + "..." if len(value) > char_limit else value
-                        pdf.cell(column_width - 4, 7, truncated_value, ln=True)  # Reduced line height
-                        pdf.set_xy(x_position + 2, pdf.get_y())
+                # Write text inside the box
+                pdf.set_xy(x + 2, y + 2)
+                for val in fields:
+                    if val:
+                        text = (val[:char_limit - 3] + '...') if len(val) > char_limit else val
+                        pdf.cell(column_width - 4, 7, text, ln=True)
+                        pdf.set_x(x + 2)
 
-            # Output PDF to response
-            pdf_output = pdf.output(dest='S').encode('latin1')
+            # Output PDF
+            pdf_bytes = pdf.output(dest='S').encode('latin1')
             return HttpResponse(
-                pdf_output,
-                content_type="application/pdf",
-                headers={"Content-Disposition": 'attachment; filename="subscriber_report.pdf"'},
+                pdf_bytes,
+                content_type='application/pdf',
+                headers={'Content-Disposition': 'attachment; filename="subscriber_report.pdf"'}
             )
 
         except Exception as e:
-            # Handle errors gracefully
-            return Response({"error": str(e)}, status=500)
+            return Response({'error': str(e)}, status=500)
 
     @action(detail=False, methods=['get'])
     def generate_report_dummy(self, request):
