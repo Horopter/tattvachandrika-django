@@ -15,7 +15,7 @@ import os
 import mongoengine
 import logging
 import django_heroku
-import dj_database_url
+from dotenv import load_dotenv
 import pymongo
 import ssl
 
@@ -95,16 +95,20 @@ DATABASES = {
     }
 }
 
-# MongoDB configuration
-MONGOENGINE_USER = os.getenv('MONGOENGINE_USER', 'tattvachandrika_admin')
-MONGOENGINE_PASSWORD = os.getenv('MONGOENGINE_PASSWORD', 'v%21%24%23w%40k%243n%40')
-MONGOENGINE_DATABASE_NAME = os.getenv('MONGOENGINE_DATABASE_NAME', 'tattvachandrika')
-MONGOENGINE_HOST = os.getenv('MONGOENGINE_HOST', 'narayana.6vte2.mongodb.net')
+# 1) load local .env if it exists (harmless no-op on Heroku/Hostinger)
+load_dotenv(BASE_DIR / '.env')
 
-# Updated connection string with tls=true for MongoDB Atlas
+# 2) read them
+MONGOENGINE_USER         = os.getenv('MONGOENGINE_USER')
+MONGOENGINE_PASSWORD     = os.getenv('MONGOENGINE_PASSWORD')
+MONGOENGINE_HOST         = os.getenv('MONGOENGINE_HOST')
+MONGOENGINE_DATABASE_NAME= os.getenv('MONGOENGINE_DATABASE_NAME')
+
+# 3) build the URI
 MONGOENGINE_CONNECTION_STRING = (
-    f"mongodb+srv://{MONGOENGINE_USER}:{MONGOENGINE_PASSWORD}@{MONGOENGINE_HOST}/"
-    f"{MONGOENGINE_DATABASE_NAME}?retryWrites=true&w=majority&tls=true"
+    f"mongodb+srv://{MONGOENGINE_USER}:{MONGOENGINE_PASSWORD}"
+    f"@{MONGOENGINE_HOST}/{MONGOENGINE_DATABASE_NAME}"
+    "?retryWrites=true&w=majority&appName=narayana"
 )
 
 DATABASE_URL = MONGOENGINE_CONNECTION_STRING
