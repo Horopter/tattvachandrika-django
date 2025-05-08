@@ -280,80 +280,81 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def generate_pdf_report(self, request):
         """
-        Generates a PDF report with subscriber data fetched from the database, skipping empty strings.
-        Includes <status, category, type> in the header of each page, in A4 landscape mode.
+        Generates a PDF report with subscriber data in A4 landscape,
+        using 5 columns per page, 6 lines per cell, 60 chars per line (no textwrap).
         """
         try:
-            # Fetch data from the report endpoint
-            char_limit = int(request.query_params.get('char_limit', 42))
-            subscriber_status = request.query_params.get('subscriberStatus', 'active')
-            subscriber_type = request.query_params.get('subscriberType', None) or "ALL"
-            subscriber_category = request.query_params.get('subscriberCategory', None) or "ALL"
-            report_data = self.report(request).data  # Use existing report method
+            report_data = self.report(request).data
 
-            # Initialize FPDF in landscape A4
             pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.set_auto_page_break(auto=True, margin=15)
 
+            margin = 10
+            header_cell_height = 10
+            header_spacing = 5
+            header_height = header_cell_height + header_spacing
+
             def add_page_with_header():
                 pdf.add_page()
-                pdf.set_font("Arial", size=11, style='B')
-                header = (f"Status: {subscriber_status.capitalize()} | Category: {subscriber_category}"
-                          f" | Type: {subscriber_type}")
-                pdf.cell(0, 10, header, align='C', ln=True)
-                pdf.ln(5)
+                pdf.set_font("Arial", size=10, style='B')
+                status = request.query_params.get('subscriberStatus', 'active')
+                category = request.query_params.get('subscriberCategory', None) or "ALL"
+                sub_type = request.query_params.get('subscriberType', None) or "ALL"
+                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type}"
+                pdf.cell(0, header_cell_height, header, align='C', ln=True)
+                pdf.ln(header_spacing)
 
             add_page_with_header()
 
-            # Layout parameters for A4 landscape
-            page_width = 297  # A4 width in landscape mm
-            page_height = 210  # A4 height in landscape mm
-            margin = 10
+            page_width, page_height = 297, 210
             usable_width = page_width - 2 * margin
-            usable_height = page_height - 2 * margin - 15  # Adjust for header
-            column_width = usable_width / 2  # Two columns
-            box_height = usable_height / 5     # Five rows per column
+            usable_height = page_height - 2 * margin - header_height
 
-            # Set base font
-            pdf.set_font("Arial", size=11)
+            columns = 5
+            line_height = 5
+            max_chars_per_line = 60
+            box_height = line_height * 6
+            rows_per_page = int(usable_height // box_height)
+            box_width = usable_width / columns
 
-            for index, subscriber in enumerate(report_data):
-                # New page every 10 entries
-                if index > 0 and index % 10 == 0:
+            pdf.set_font("Arial", size=8)
+
+            def sanitize(val):
+                return str(val) if val not in (None, '', 'null', 'None') else None
+
+            for idx, sub in enumerate(report_data):
+                if idx > 0 and idx % (columns * rows_per_page) == 0:
                     add_page_with_header()
 
-                # Column and row
-                col = index % 2
-                row = (index // 2) % 5
+                col = idx % columns
+                row = (idx // columns) % rows_per_page
+                x = margin + col * box_width
+                y = margin + header_height + row * box_height
 
-                x = margin + col * column_width
-                y = margin + row * box_height + 15
-
-                # Draw box
-                pdf.rect(x, y, column_width, box_height)
-
-                # Prepare values
-                def sanitize(val):
-                    return str(val) if val not in (None, '', 'null', 'None') else None
+                pdf.rect(x, y, box_width, box_height)
 
                 fields = [
-                    sanitize(subscriber.get("Name")),
-                    sanitize(subscriber.get("Address line 1")),
-                    sanitize(subscriber.get("Address line 2")),
-                    sanitize(f"{subscriber.get('City', '')}, {subscriber.get('District', '')}".strip(", ")),  # City,District
-                    sanitize(f"{subscriber.get('State', '')}, {subscriber.get('Pincode', '')}".strip(", ")),
-                    sanitize(subscriber.get("Phone Number")),
+                    sanitize(sub.get("Name")),
+                    sanitize(sub.get("Address line 1")),
+                    sanitize(sub.get("Address line 2")),
+                    sanitize(f"{sub.get('City','')}, {sub.get('District','')}".strip(", ")),
+                    sanitize(f"{sub.get('State','')}, {sub.get('Pincode','')}".strip(", ")),
+                    sanitize(sub.get("Phone Number")),
                 ]
 
-                # Write text inside the box
                 pdf.set_xy(x + 2, y + 2)
                 for val in fields:
-                    if val:
-                        text = (val[:char_limit - 3] + '...') if len(val) > char_limit else val
-                        pdf.cell(column_width - 4, 7, text, ln=True)
+                    if not val:
+                        continue
+                    # Slice text into max_chars_per_line chunks, max 6 lines
+                    for line_no in range(6):
+                        start = line_no * max_chars_per_line
+                        if start >= len(val):
+                            break
+                        chunk = val[start:start + max_chars_per_line]
+                        pdf.cell(box_width - 4, line_height, chunk, ln=True)
                         pdf.set_x(x + 2)
 
-            # Output PDF
             pdf_bytes = pdf.output(dest='S').encode('latin1')
             return HttpResponse(
                 pdf_bytes,
