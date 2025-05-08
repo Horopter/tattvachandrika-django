@@ -365,6 +365,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
                         chunk = val[start:start + max_chars_per_line]
                         pdf.cell(box_width - 4, line_height, chunk, ln=True)
                         pdf.set_x(x + 2)
+                pdf.ln(line_height)
 
             pdf_bytes = pdf.output(dest='S').encode('latin1')
             return HttpResponse(
