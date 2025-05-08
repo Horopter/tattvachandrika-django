@@ -73,3 +73,4 @@ tzdata==2025.2
 uritemplate==4.1.1
 urllib3==2.3.0
 whitenoise==6.9.0
+python-dotenv==0.20.0
