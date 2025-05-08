@@ -181,7 +181,7 @@ class MagazineSubscriberSerializer(DocumentSerializer):
         queryset=SubscriberType.objects.all(),
         required=True
     )
-    email = serializers.CharField(required=False)
+    email = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     address = serializers.CharField(required=True)
     city_town = serializers.CharField(required=True)
     state = serializers.CharField(required=True)
