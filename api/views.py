@@ -218,6 +218,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         subscriber_status = request.query_params.get('subscriberStatus', 'active')
         subscriber_type = request.query_params.get('subscriberType', None)
         subscriber_category = request.query_params.get('subscriberCategory', None)
+        subscription_plan = request.query_params.get('subscriptionPlan', None)
 
         # Helper function to split an address into multiple lines based on character limit.
         def split_address(address, char_limit):
@@ -255,6 +256,15 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
                 filters['category'] = subscriber_category_obj.id
             except SubscriberCategory.DoesNotExist:
                 raise PermissionDenied(f"Invalid subscriber category: {subscriber_category}")
+            
+        if subscription_plan:
+            try:
+                # Fetch the corresponding SubscriberCategory ID by name
+                subscription_plan_obj = SubscriptionPlan.objects.get(name=subscription_plan)
+                filters['subscriptionPlan'] = subscription_plan_obj.id
+            except:
+                None # Do Nothing
+
 
         # Fetch and process subscribers
         subscribers = self.get_queryset().filter(**filters)
@@ -300,7 +310,8 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
                 status = request.query_params.get('subscriberStatus', 'active')
                 category = request.query_params.get('subscriberCategory', None) or "ALL"
                 sub_type = request.query_params.get('subscriberType', None) or "ALL"
-                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type}"
+                subscription_plan = request.query_params.get('subscriptionPlan', None) or "ALL"
+                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type} | Plan: {subscription_plan}"
                 pdf.cell(0, header_cell_height, header, align='C', ln=True)
                 pdf.ln(header_spacing)
 
