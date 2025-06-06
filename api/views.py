@@ -162,7 +162,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsSetPagination  # Added pagination
 
     def get_queryset(self):
-        return MagazineSubscriber.objects.all()
+        return MagazineSubscriber.objects.order_by('-_id')
 
     def get_object(self):
         queryset = self.filter_queryset(self.get_queryset())
