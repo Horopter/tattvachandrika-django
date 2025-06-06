@@ -259,14 +259,14 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
             key: {
                 'results': serializer.data,
                 'count': total_count,
-                'next': self._generate_pagination_link(paginator.get_next_link(), key, page_num, request),
-                'previous': self._generate_pagination_link(paginator.get_previous_link(), key, page_num, request),
+                'next': self._generate_pagination_link(paginator.get_next_link(), key, page_num, request, 1),
+                'previous': self._generate_pagination_link(paginator.get_previous_link(), key, page_num, request, -1),
             }
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
     
-    def _generate_pagination_link(self, link, key, current_page, request):
+    def _generate_pagination_link(self, link, key, current_page, request, increment):
         if link is None:
             return None
 
@@ -276,11 +276,15 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
 
         # Update the page parameter dynamically based on the current tab (key)
         if key == 'current':
-            query_params['page_current'] = current_page + 1
+            query_params['page_current'] = current_page + increment
+            query_params['page'] = current_page + increment
         elif key == 'renewal':
-            query_params['page_renewal'] = current_page + 1
+            query_params['page_renewal'] = current_page + increment
+            query_params['page'] = current_page + increment  
         elif key == 'inactive':
-            query_params['page_inactive'] = current_page + 1
+            query_params['page_inactive'] = current_page + increment
+            query_params['page'] = current_page + increment
+            
 
         # Rebuild the URL with updated query parameters
         updated_link = f"{url}?{query_params.urlencode()}"
