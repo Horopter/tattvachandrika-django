@@ -9,6 +9,7 @@ from rest_framework.exceptions import AuthenticationFailed, PermissionDenied, No
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_mongoengine import viewsets
+from rest_framework.pagination import PageNumberPagination  # Added for pagination
 
 # FPDF
 from fpdf import FPDF
@@ -40,6 +41,13 @@ from .serializers import (
     SubscriptionPlanSerializer,
     SubscriptionSerializer,
 )
+
+# Added Pagination class
+class StandardResultsSetPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
 
 class TokenAuthentication(BaseAuthentication):
     def authenticate(self, request):
@@ -151,6 +159,8 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
     serializer_class = MagazineSubscriberSerializer
     authentication_classes = [TokenAuthentication]
 
+    pagination_class = StandardResultsSetPagination  # Added pagination
+
     def get_queryset(self):
         return MagazineSubscriber.objects.all()
 
@@ -175,6 +185,12 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
             # Use icontains for a case-insensitive partial match.
             filter_kwargs = {f"{search_filter}__icontains": query}
             queryset = queryset.filter(**filter_kwargs)
+
+        # Paginate search results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
 
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
@@ -205,6 +221,13 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+
+        # Paginate list results
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -256,7 +279,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
                 filters['category'] = subscriber_category_obj.id
             except SubscriberCategory.DoesNotExist:
                 raise PermissionDenied(f"Invalid subscriber category: {subscriber_category}")
-            
+
         if subscription_plan:
             try:
                 # Fetch the corresponding SubscriberCategory ID by name
@@ -265,9 +288,9 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
             except:
                 None # Do Nothing
 
+        # Limit result to 500 records to avoid timeout
+        subscribers = self.get_queryset().filter(**filters)[:500]
 
-        # Fetch and process subscribers
-        subscribers = self.get_queryset().filter(**filters)
         report = []
         for subscriber in subscribers:
             address_lines = split_address(subscriber.address, char_limit)
@@ -519,7 +542,7 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         obj = queryset.get(**filter_kwargs)
         self.check_object_permissions(self.request, obj)
         return obj
-        
+
     @action(detail=False, methods=['get'], url_path='by_subscriber/(?P<subscriber_id>[^/.]+)')
     def get_by_subscriber(self, request, subscriber_id=None):
         try:
@@ -606,4 +629,3 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Invalid token."}, status=status.HTTP_401_UNAUTHORIZED)
 
         return Response({"error": "Token not provided."}, status=status.HTTP_400_BAD_REQUEST)
-
