@@ -66,6 +66,11 @@ class PaymentModeSerializer(DocumentSerializer):
             raise serializers.ValidationError({'name': 'This field is required.'})
         return data
 
+from rest_framework_mongoengine.serializers import DocumentSerializer
+from rest_framework import serializers
+from datetime import date, datetime
+from .models import Subscription, SubscriptionPlan, PaymentMode
+
 class SubscriptionSerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
     subscription_plan = serializers.PrimaryKeyRelatedField(queryset=SubscriptionPlan.objects.all())
@@ -78,11 +83,13 @@ class SubscriptionSerializer(DocumentSerializer):
 
     def validate(self, data):
         payment_mode_obj = data.get('payment_mode')
-        if payment_mode_obj and not PaymentMode.objects.filter(pk=payment_mode_obj.pk).exists():
+        payment_mode_id = getattr(payment_mode_obj, 'pk', payment_mode_obj)
+        if payment_mode_id and not PaymentMode.objects.filter(pk=payment_mode_id).count():
             raise serializers.ValidationError({"payment_mode": "Payment mode does not exist."})
 
         subscription_plan_obj = data.get('subscription_plan')
-        if subscription_plan_obj and not SubscriptionPlan.objects.filter(pk=subscription_plan_obj.pk).exists():
+        subscription_plan_id = getattr(subscription_plan_obj, 'pk', subscription_plan_obj)
+        if subscription_plan_id and not SubscriptionPlan.objects.filter(pk=subscription_plan_id).count():
             raise serializers.ValidationError({"subscription_plan": "Subscription plan does not exist."})
 
         payment_date_str = data.get('payment_date')
@@ -100,10 +107,10 @@ class SubscriptionSerializer(DocumentSerializer):
             raise serializers.ValidationError({"end_date": "End date must be after start date."})
 
         subscriber = data.get('subscriber')
-        if subscriber and subscription_plan_obj and start_date and end_date:
+        if subscriber and subscription_plan_id and start_date and end_date:
             overlap_qs = Subscription.objects.filter(
                 subscriber=subscriber,
-                subscription_plan=subscription_plan_obj,
+                subscription_plan=subscription_plan_id,
                 start_date__lte=end_date,
                 end_date__gte=start_date
             )
@@ -112,11 +119,10 @@ class SubscriptionSerializer(DocumentSerializer):
             if overlap_qs.count() > 0:
                 raise serializers.ValidationError("Duplicate subscription not allowed due to overlapping dates.")
 
-        # Check for exact duplicates (exclude current instance)
-        if subscriber and subscription_plan_obj and start_date and end_date:
+        if subscriber and subscription_plan_id and start_date and end_date:
             dup_qs = Subscription.objects.filter(
                 subscriber=subscriber,
-                subscription_plan=subscription_plan_obj,
+                subscription_plan=subscription_plan_id,
                 start_date=start_date,
                 end_date=end_date
             )
@@ -125,7 +131,6 @@ class SubscriptionSerializer(DocumentSerializer):
             if dup_qs.count() > 0:
                 raise serializers.ValidationError("Duplicate subscription not allowed.")
 
-        # Set active flag automatically
         if end_date:
             data["active"] = date.today() <= end_date
         else:
