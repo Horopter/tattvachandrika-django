@@ -253,6 +253,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         paginator = PageNumberPagination()
         paginator.page_size = page_size
 
+        # Determine the target queryset based on the active tab and subtab
         if page_current > 0:
             target_qs = base_queryset.filter(isDeleted=False, hasActiveSubscriptions=True)
             page_num = page_current
@@ -266,7 +267,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
             page_num = page_inactive
             key = 'inactive'
         else:
-            # default to current page 1 if no page param sent
+            # Default to current page 1 if no page param sent
             target_qs = base_queryset.filter(isDeleted=False, hasActiveSubscriptions=True)
             page_num = 1
             key = 'current'
@@ -274,15 +275,22 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         # Get total count for this group only (no extra counts)
         total_count = target_qs.count()
 
-        # Set 'page' param for pagination
+        # Set 'page' param for pagination dynamically
         mutable_query_params = request.query_params._mutable
         request.query_params._mutable = True
-        request.query_params['page'] = page_num
+        if key == 'current':
+            request.query_params['page_current'] = page_num
+        elif key == 'renewal':
+            request.query_params['page_renewal'] = page_num
+        elif key == 'inactive':
+            request.query_params['page_inactive'] = page_num
         request.query_params._mutable = mutable_query_params
 
+        # Paginate the filtered queryset
         paged_qs = paginator.paginate_queryset(target_qs, request)
         serializer = self.get_serializer(paged_qs, many=True)
 
+        # Prepare the response data
         response_data = {
             key: {
                 'results': serializer.data,
