@@ -171,51 +171,6 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         self.check_object_permissions(self.request, obj)
         return obj
 
-    @action(detail=False, methods=['get'], url_path='search')
-    def search(self, request):
-        """
-        Search subscribers based on a given filter and query, considering active tab and active subtab.
-        For example, if filter=name and query=Srihari, it will perform a case-insensitive search on the 'name' field.
-        """
-        # Get the search filter and query parameters from the request
-        search_filter = request.query_params.get('filter', None)
-        query = request.query_params.get('query', None)
-        
-        # Get the current tab and subtab from the request
-        active_tab = request.query_params.get('activeTab', 'active')
-        active_subtab = request.query_params.get('activeSubTab', 'current')
-
-        queryset = self.get_queryset()
-
-        # Apply search filter if provided
-        if search_filter and query:
-            filter_kwargs = {f"{search_filter}__icontains": query}
-            queryset = queryset.filter(**filter_kwargs)
-
-        # Apply the filter for the active tab and subtab
-        if active_tab == 'active':
-            if active_subtab == 'current':
-                queryset = queryset.filter(isDeleted=False, hasActiveSubscriptions=True)
-            elif active_subtab == 'renewal':
-                queryset = queryset.filter(isDeleted=False, hasActiveSubscriptions=False)
-        elif active_tab == 'inactive':
-            queryset = queryset.filter(isDeleted=True)
-
-        # Paginate search results
-        page_size = int(request.query_params.get('page_size', 20))  # Default page size is 20
-        paginator = PageNumberPagination()
-        paginator.page_size = page_size
-
-        # Paginate based on the queryset filtered by active tab and subtab
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        # If no pagination needed, return all results
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
     @action(detail=True, methods=['post'], url_path='activate')
     def activate(self, request, _id=None):
         # 1. Grab the instance (will 404 if not found)
@@ -248,7 +203,16 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         page_renewal = int(request.query_params.get('page_renewal', 0))
         page_inactive = int(request.query_params.get('page_inactive', 0))
 
+        # Get the search filter and query parameters from the request
+        search_filter = request.query_params.get('filter', None)
+        query = request.query_params.get('query', None)
+
         base_queryset = self.filter_queryset(self.get_queryset())
+
+        # Apply search filter if provided
+        if search_filter and query:
+            filter_kwargs = {f"{search_filter}__icontains": query}
+            base_queryset = base_queryset.filter(**filter_kwargs)
 
         paginator = PageNumberPagination()
         paginator.page_size = page_size
