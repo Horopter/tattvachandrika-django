@@ -220,16 +220,58 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         instance.save()
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
+        requested_page_size = int(request.query_params.get('page_size', 20))
+        page_size = min(requested_page_size, 20)  # Max page size is 20
 
-        # Paginate list results
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
+        page_current = int(request.query_params.get('page_current', 0))
+        page_renewal = int(request.query_params.get('page_renewal', 0))
+        page_inactive = int(request.query_params.get('page_inactive', 0))
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        base_queryset = self.filter_queryset(self.get_queryset())
+
+        paginator = PageNumberPagination()
+        paginator.page_size = page_size
+
+        if page_current > 0:
+            target_qs = base_queryset.filter(isDeleted=False, hasActiveSubscriptions=True)
+            page_num = page_current
+            key = 'current'
+        elif page_renewal > 0:
+            target_qs = base_queryset.filter(isDeleted=False, hasActiveSubscriptions=False)
+            page_num = page_renewal
+            key = 'renewal'
+        elif page_inactive > 0:
+            target_qs = base_queryset.filter(isDeleted=True)
+            page_num = page_inactive
+            key = 'inactive'
+        else:
+            # default to current page 1 if no page param sent
+            target_qs = base_queryset.filter(isDeleted=False, hasActiveSubscriptions=True)
+            page_num = 1
+            key = 'current'
+
+        # Get total count for this group only (no extra counts)
+        total_count = target_qs.count()
+
+        # Set 'page' param for pagination
+        mutable_query_params = request.query_params._mutable
+        request.query_params._mutable = True
+        request.query_params['page'] = page_num
+        request.query_params._mutable = mutable_query_params
+
+        paged_qs = paginator.paginate_queryset(target_qs, request)
+        serializer = self.get_serializer(paged_qs, many=True)
+
+        response_data = {
+            key: {
+                'results': serializer.data,
+                'count': total_count,
+                'next': paginator.get_next_link(),
+                'previous': paginator.get_previous_link(),
+            }
+        }
+
+        return Response(response_data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])
     def report(self, request):
