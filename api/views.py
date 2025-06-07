@@ -390,6 +390,16 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         try:
             report_data = self.report(request).data
 
+            # Fetch all subscription plans in one query to avoid N+1 queries
+            plan_ids = set()
+            for sub in report_data:
+                plan_id = sub.get('subscriptionPlan')  # or exact key used in your data
+                if plan_id:
+                    plan_ids.add(plan_id)
+
+            plans = SubscriptionPlan.objects.filter(pk__in=plan_ids).only('name', 'start_date')
+            plans_dict = {str(plan.pk): plan for plan in plans}
+
             pdf = FPDF(orientation='L', unit='mm', format='A4')
             pdf.set_auto_page_break(auto=True, margin=15)
 
@@ -405,7 +415,25 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
                 category = request.query_params.get('subscriberCategory', None) or "ALL"
                 sub_type = request.query_params.get('subscriberType', None) or "ALL"
                 subscription_plan = request.query_params.get('subscriptionPlan', None) or "ALL"
-                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type} | Plan: {subscription_plan}"
+                plan_display = "ALL"
+
+                if subscription_plan != "ALL":
+                    plan_full_desc = plans_dict[subscription_plan].name
+                    plan_start_date = plans_dict[subscription_plan].start_date
+                    
+                    # Split plan description into parts
+                    parts = plan_full_desc.split("-")
+                    duration = parts[0].strip() if len(parts) > 0 else "N/A"
+                    language = parts[1].strip() if len(parts) > 1 else "N/A"
+                    delivery_mode = parts[2].strip() if len(parts) > 2 else "N/A"
+                    start_date_str = plan_start_date if plan_start_date else "N/A"
+
+                    plan_display = (
+                        f"Duration: {duration}, Language: {language}, Delivery Mode: {delivery_mode} "
+                        f"(Plan Start Date: {start_date_str})"
+                    )
+
+                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type} | Plan: {plan_display}"
                 pdf.cell(0, header_cell_height, header, align='C', ln=True)
                 pdf.ln(header_spacing)
 

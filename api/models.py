@@ -98,7 +98,7 @@ class MagazineSubscriber(me.Document):
     district = me.StringField(max_length=255, required=False)
     state = me.StringField(max_length=255, required=True)
     pincode = me.StringField(max_length=6, required=True)
-    phone = me.StringField(max_length=10, required=True)
+    phone = me.StringField(max_length=10, required=True, unique=True)
     email = me.EmailField(required=False, unique=True)
     category = me.ReferenceField(SubscriberCategory, null=True, required=False)
     stype = me.ReferenceField(SubscriberType, null=True, required=False)
