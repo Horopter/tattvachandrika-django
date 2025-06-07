@@ -405,7 +405,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
                 category = request.query_params.get('subscriberCategory', None) or "ALL"
                 sub_type = request.query_params.get('subscriberType', None) or "ALL"
                 subscription_plan = request.query_params.get('subscriptionPlan', None) or "ALL"
-                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type} | Plan: {subscription_plan}"
+                header = f"Status: {status.capitalize()} | Category: {category} | Type: {sub_type} | Subscription Plan: {subscription_plan}"
                 pdf.cell(0, header_cell_height, header, align='C', ln=True)
                 pdf.ln(header_spacing)
 
