@@ -88,6 +88,7 @@ class SubscriptionSerializer(DocumentSerializer):
 
         if subscriber:
             # Fetch the full subscriber document from DB using the subscriber's id
+            # Fix here: normalize subscriber to ID string before DB query
             subscriber_id = subscriber.id if hasattr(subscriber, 'id') else subscriber
             try:
                 subscriber_obj = MagazineSubscriber.objects.only('isDeleted').get(pk=subscriber_id)
@@ -128,27 +129,30 @@ class SubscriptionSerializer(DocumentSerializer):
         if start_date and end_date and end_date <= start_date:
             raise serializers.ValidationError({"end_date": "End date must be after start date."})
 
-        if subscriber and subscription_plan_id and start_date and end_date:
+        # Fix here: convert subscriber to ID string for filtering overlap queries
+        subscriber_filter = subscriber_id if subscriber else None
+
+        if subscriber_filter and subscription_plan_id and start_date and end_date:
             overlap_qs = Subscription.objects.filter(
-                subscriber=subscriber,
+                subscriber=subscriber_filter,
                 subscription_plan=subscription_plan_id,
                 start_date__lte=end_date,
                 end_date__gte=start_date
             )
             if self.instance:
-                overlap_qs = overlap_qs.filter(_id__ne=self.instance.id)
+                overlap_qs = overlap_qs.filter(_id__ne=self.instance._id)
             if overlap_qs.count() > 0:
                 raise serializers.ValidationError("Duplicate subscription not allowed due to overlapping dates.")
 
-        if subscriber and subscription_plan_id and start_date and end_date:
+        if subscriber_filter and subscription_plan_id and start_date and end_date:
             dup_qs = Subscription.objects.filter(
-                subscriber=subscriber,
+                subscriber=subscriber_filter,
                 subscription_plan=subscription_plan_id,
                 start_date=start_date,
                 end_date=end_date
             )
             if self.instance:
-                dup_qs = dup_qs.filter(_id__ne=self.instance.id)
+                dup_qs = dup_qs.filter(_id__ne=self.instance._id)
             if dup_qs.count() > 0:
                 raise serializers.ValidationError("Duplicate subscription not allowed.")
 

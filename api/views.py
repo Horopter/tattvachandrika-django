@@ -651,7 +651,6 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         except Subscription.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-
 class AdminUserViewSet(viewsets.ModelViewSet):
     serializer_class = AdminUserSerializer
     lookup_field = '_id'
