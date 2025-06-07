@@ -92,14 +92,21 @@ class SubscriptionSerializer(DocumentSerializer):
         if subscription_plan_id and not SubscriptionPlan.objects.filter(pk=subscription_plan_id).count():
             raise serializers.ValidationError({"subscription_plan": "Subscription plan does not exist."})
 
-        payment_date_str = data.get('payment_date')
-        if payment_date_str:
-            try:
-                payment_date = datetime.strptime(payment_date_str, "%Y-%m-%d").date()
-                if payment_date > date.today():
-                    raise serializers.ValidationError("Payment date cannot be in the future.")
-            except ValueError:
-                raise serializers.ValidationError("Invalid payment date. Make sure it's in YYYY-MM-DD format and not a future date.")
+        payment_date_val = data.get('payment_date')
+        if payment_date_val:
+            if isinstance(payment_date_val, str):
+                try:
+                    payment_date_val = datetime.strptime(payment_date_val, "%Y-%m-%d").date()
+                except ValueError:
+                    raise serializers.ValidationError(
+                        "Invalid payment date. Make sure it's in YYYY-MM-DD format."
+                    )
+            elif not isinstance(payment_date_val, date):
+                raise serializers.ValidationError("payment_date must be a date or a string in YYYY-MM-DD format.")
+
+            if payment_date_val > date.today():
+                raise serializers.ValidationError("Payment date cannot be in the future.")
+            data['payment_date'] = payment_date_val
 
         start_date = data.get('start_date')
         end_date = data.get('end_date')
