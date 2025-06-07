@@ -595,7 +595,6 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
             # Handle errors gracefully
             return Response({"error": str(e)}, status=500)
 
-
 class SubscriptionViewSet(viewsets.ModelViewSet):
     lookup_field = '_id'
     serializer_class = SubscriptionSerializer
@@ -610,6 +609,35 @@ class SubscriptionViewSet(viewsets.ModelViewSet):
         obj = queryset.get(**filter_kwargs)
         self.check_object_permissions(self.request, obj)
         return obj
+
+    def create(self, request, *args, **kwargs):
+        subscriber_id = request.data.get('subscriber')
+        if subscriber_id:
+            subscriber = MagazineSubscriber.objects.filter(_id=subscriber_id).first()
+            if subscriber and subscriber.isDeleted:
+                return Response(
+                    {"error": "Cannot create subscriptions for inactive subscriber."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        return super().create(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        subscription = self.get_object()
+        if subscription.subscriber.isDeleted:
+            return Response(
+                {"error": "Cannot update subscriptions for inactive subscriber."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().update(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        subscription = self.get_object()
+        if subscription.subscriber.isDeleted:
+            return Response(
+                {"error": "Cannot delete subscriptions of inactive subscriber."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().destroy(request, *args, **kwargs)
 
     @action(detail=False, methods=['get'], url_path='by_subscriber/(?P<subscriber_id>[^/.]+)')
     def get_by_subscriber(self, request, subscriber_id=None):

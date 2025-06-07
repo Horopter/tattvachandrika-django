@@ -84,6 +84,12 @@ class SubscriptionSerializer(DocumentSerializer):
         fields = '__all__'
 
     def validate(self, data):
+        subscriber = data.get('subscriber') or getattr(self.instance, 'subscriber', None)
+        
+        # NEW: Check if subscriber is inactive; if so, disallow changes.
+        if subscriber and subscriber.isDeleted:
+            raise serializers.ValidationError("Cannot create or update subscription for inactive subscriber.")
+
         payment_mode_obj = data.get('payment_mode')
         payment_mode_id = getattr(payment_mode_obj, 'pk', payment_mode_obj)
         if payment_mode_id and not PaymentMode.objects.filter(pk=payment_mode_id).count():
@@ -115,7 +121,6 @@ class SubscriptionSerializer(DocumentSerializer):
         if start_date and end_date and end_date <= start_date:
             raise serializers.ValidationError({"end_date": "End date must be after start date."})
 
-        subscriber = data.get('subscriber')
         if subscriber and subscription_plan_id and start_date and end_date:
             overlap_qs = Subscription.objects.filter(
                 subscriber=subscriber,
@@ -146,7 +151,6 @@ class SubscriptionSerializer(DocumentSerializer):
             data["active"] = True
 
         return data
-
 
 class MagazineSubscriberSerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
