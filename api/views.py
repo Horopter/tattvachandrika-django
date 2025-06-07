@@ -252,10 +252,13 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         request.query_params._mutable = True
         if key == 'current':
             request.query_params['page_current'] = page_num
+            request.query_params['page'] = page_num
         elif key == 'renewal':
             request.query_params['page_renewal'] = page_num
+            request.query_params['page'] = page_num
         elif key == 'inactive':
             request.query_params['page_inactive'] = page_num
+            request.query_params['page'] = page_num
         request.query_params._mutable = mutable_query_params
 
         # Paginate the filtered queryset
@@ -350,7 +353,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
 
         if subscription_plan:
             try:
-                # Fetch the corresponding SubscriberCategory ID by name
+                # Fetch the corresponding Subscriber Plan ID by name
                 subscription_plan_obj = SubscriptionPlan.objects.get(name=subscription_plan)
                 filters['subscriptionPlan'] = subscription_plan_obj.id
             except:
