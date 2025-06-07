@@ -3,6 +3,8 @@ from rest_framework import serializers
 from .models import MagazineSubscriber, Subscription, SubscriptionPlan, SubscriberCategory, SubscriberType, SubscriptionLanguage, SubscriptionMode, PaymentMode, AdminUser
 from datetime import date, datetime
 
+import re
+
 class SubscriberCategorySerializer(DocumentSerializer):
     _id = serializers.CharField(read_only=True)
     class Meta:
@@ -151,7 +153,7 @@ class MagazineSubscriberSerializer(DocumentSerializer):
     created_at = serializers.DateTimeField(read_only=True)
     category = serializers.PrimaryKeyRelatedField(queryset=SubscriberCategory.objects.all(), required=True)
     stype = serializers.PrimaryKeyRelatedField(queryset=SubscriberType.objects.all(), required=True)
-    email = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
     address = serializers.CharField(required=True)
     city_town = serializers.CharField(required=True)
     state = serializers.CharField(required=True)
@@ -163,7 +165,6 @@ class MagazineSubscriberSerializer(DocumentSerializer):
     subscriptions = serializers.SerializerMethodField()
 
     def __init__(self, *args, **kwargs):
-        # Accept a flag in context to control inclusion of subscriptions
         include_subscriptions = kwargs.pop('include_subscriptions', False)
         super().__init__(*args, **kwargs)
         if not include_subscriptions:
@@ -172,6 +173,63 @@ class MagazineSubscriberSerializer(DocumentSerializer):
     def get_subscriptions(self, obj):
         subscriptions = Subscription.objects.filter(subscriber=obj).order_by('-start_date')
         return SubscriptionSerializer(subscriptions, many=True).data
+
+    def validate_name(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Name cannot be empty.")
+        if len(value) > 255:
+            raise serializers.ValidationError("Name cannot exceed 255 characters.")
+        if not re.fullmatch(r"[A-Za-z\s\'\-]+", value):
+            raise serializers.ValidationError("Name can only contain letters, spaces, apostrophes, and hyphens.")
+        return value.strip()
+
+    def validate_registration_number(self, value):
+        if value is None:
+            return value
+        if len(value) > 20:
+            raise serializers.ValidationError("Registration number cannot exceed 20 characters.")
+        if not re.fullmatch(r"[A-Z0-9\/\-]+", value.upper()):
+            raise serializers.ValidationError("Registration number format is invalid.")
+        return value.upper()
+
+    def validate_state(self, value):
+        if not re.fullmatch(r"[A-Za-z\s\-]+", value):
+            raise serializers.ValidationError("State can only contain letters, spaces, and hyphens.")
+        return value.strip()
+
+    def validate_city_town(self, value):
+        if not re.fullmatch(r"[A-Za-z\s\-]+", value):
+            raise serializers.ValidationError("City/Town can only contain letters, spaces, and hyphens.")
+        return value.strip()
+
+    def validate_address(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("Address cannot be empty.")
+        if len(value) > 500:
+            raise serializers.ValidationError("Address cannot exceed 500 characters.")
+        return value.strip()
+
+    def validate_pincode(self, value):
+        if not re.fullmatch(r"\d{6}", value):
+            raise serializers.ValidationError("Pincode must be exactly 6 digits.")
+        return value
+
+    def validate_phone(self, value):
+        if not re.fullmatch(r"\d{10}", value):
+            raise serializers.ValidationError("Phone must be exactly 10 digits.")
+        return value
+
+    def validate_notes(self, value):
+        if value and len(value) > 1000:
+            raise serializers.ValidationError("Notes cannot exceed 1000 characters.")
+        return value
+
+    def validate_email(self, value):
+        if value is None or value == "":
+            return value
+        return value.lower()
+
+    # No extra DB queries here, rely on PrimaryKeyRelatedField's built-in validation.
 
     class Meta:
         model = MagazineSubscriber
