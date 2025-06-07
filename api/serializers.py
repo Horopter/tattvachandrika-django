@@ -85,10 +85,17 @@ class SubscriptionSerializer(DocumentSerializer):
 
     def validate(self, data):
         subscriber = data.get('subscriber') or getattr(self.instance, 'subscriber', None)
-        
-        # NEW: Check if subscriber is inactive; if so, disallow changes.
-        if subscriber and subscriber.isDeleted:
-            raise serializers.ValidationError("Cannot create or update subscription for inactive subscriber.")
+
+        if subscriber:
+            # Fetch the full subscriber document from DB using the subscriber's id
+            subscriber_id = subscriber._id if hasattr(subscriber, '_id') else subscriber
+            try:
+                subscriber_obj = MagazineSubscriber.objects.only('isDeleted').get(pk=subscriber_id)
+            except MagazineSubscriber.DoesNotExist:
+                raise serializers.ValidationError("Subscriber does not exist.")
+
+            if subscriber_obj.isDeleted:
+                raise serializers.ValidationError("Cannot create or update subscription for inactive subscriber.")
 
         payment_mode_obj = data.get('payment_mode')
         payment_mode_id = getattr(payment_mode_obj, 'pk', payment_mode_obj)
