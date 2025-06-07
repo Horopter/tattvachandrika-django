@@ -88,11 +88,11 @@ class SubscriptionSerializer(DocumentSerializer):
 
         if subscriber:
             # Fetch the full subscriber document from DB using the subscriber's id
-            subscriber_id = subscriber._id if hasattr(subscriber, '_id') else subscriber
+            subscriber_id = subscriber.id if hasattr(subscriber, 'id') else subscriber
             try:
                 subscriber_obj = MagazineSubscriber.objects.only('isDeleted').get(pk=subscriber_id)
             except MagazineSubscriber.DoesNotExist:
-                raise serializers.ValidationError(f"Subscriber does not exist. {str(subscriber)}")
+                raise serializers.ValidationError(f"Subscriber does not exist. {str(subscriber_id)}")
 
             if subscriber_obj.isDeleted:
                 raise serializers.ValidationError("Cannot create or update subscription for inactive subscriber.")
