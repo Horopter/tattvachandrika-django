@@ -162,9 +162,15 @@ class MagazineSubscriberSerializer(DocumentSerializer):
     isDeleted = serializers.BooleanField(required=False)
     subscriptions = serializers.SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        # Accept a flag in context to control inclusion of subscriptions
+        include_subscriptions = kwargs.pop('include_subscriptions', False)
+        super().__init__(*args, **kwargs)
+        if not include_subscriptions:
+            self.fields.pop('subscriptions', None)
+
     def get_subscriptions(self, obj):
-        # Optimize by limiting to last 10 subscriptions (adjust as needed)
-        subscriptions = Subscription.objects.filter(subscriber=obj).order_by('-start_date')[:10]
+        subscriptions = Subscription.objects.filter(subscriber=obj).order_by('-start_date')
         return SubscriptionSerializer(subscriptions, many=True).data
 
     class Meta:
@@ -175,7 +181,6 @@ class MagazineSubscriberSerializer(DocumentSerializer):
             'notes', 'hasActiveSubscriptions', 'isDeleted', 'subscriptions',
             'created_at'
         ]
-
 
 class AdminUserSerializer(DocumentSerializer):
     class Meta:

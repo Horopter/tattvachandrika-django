@@ -195,6 +195,14 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         instance.isDeleted = True
         instance.save()
 
+    # --- ADDITION: Override get_serializer to include subscriptions only on detail (retrieve) ---
+    def get_serializer(self, *args, **kwargs):
+        if self.action == 'retrieve':  # Detail view
+            kwargs['include_subscriptions'] = True
+        else:  # List view or others
+            kwargs['include_subscriptions'] = False
+        return super().get_serializer(*args, **kwargs)
+
     def list(self, request, *args, **kwargs):
         requested_page_size = int(request.query_params.get('page_size', 20))
         page_size = min(requested_page_size, 20)  # Max page size is 20
@@ -239,7 +247,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         # Get total count for this group only (no extra counts)
         total_count = target_qs.count()
 
-        # Set 'page' param for pagination dynamically
+        # Set the appropriate page param dynamically for pagination
         mutable_query_params = request.query_params._mutable
         request.query_params._mutable = True
         if key == 'current':
@@ -254,7 +262,7 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         paged_qs = paginator.paginate_queryset(target_qs, request)
         serializer = self.get_serializer(paged_qs, many=True)
 
-        # Prepare the response data
+        # Prepare the response data with corrected next/previous links
         response_data = {
             key: {
                 'results': serializer.data,
@@ -265,28 +273,29 @@ class MagazineSubscriberViewSet(viewsets.ModelViewSet):
         }
 
         return Response(response_data, status=status.HTTP_200_OK)
-    
+
+    # --- Helper method to fix pagination links with correct page params ---
     def _generate_pagination_link(self, link, key, current_page, request, increment):
         if link is None:
             return None
 
-        # Adjust the URL with the appropriate page parameter (page_current, page_renewal, page_inactive)
-        url = link.split('?')[0]  # Base URL
+        # Base URL without query params
+        url = link.split('?')[0]
+
+        # Copy and update query params properly
         query_params = request.query_params.copy()
 
-        # Update the page parameter dynamically based on the current tab (key)
+        # Update the correct page parameter according to current tab/subtab
         if key == 'current':
             query_params['page_current'] = current_page + increment
             query_params['page'] = current_page + increment
         elif key == 'renewal':
             query_params['page_renewal'] = current_page + increment
-            query_params['page'] = current_page + increment  
+            query_params['page'] = current_page + increment
         elif key == 'inactive':
             query_params['page_inactive'] = current_page + increment
             query_params['page'] = current_page + increment
-            
 
-        # Rebuild the URL with updated query parameters
         updated_link = f"{url}?{query_params.urlencode()}"
         return updated_link
 
