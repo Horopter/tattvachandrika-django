@@ -151,7 +151,7 @@ class Subscription(me.Document):
     @classmethod
     def update_active_subscription_flag(cls, subscriber):
         now = datetime.now(pytz.timezone('Asia/Kolkata'))
-        active_count = cls.objects(subscriber=subscriber, end_date__gte=now, active=True).count()
+        active_count = cls.objects(subscriber=subscriber, end_date__gte=now).count()
         if subscriber.hasActiveSubscriptions != (active_count > 0):
             subscriber.hasActiveSubscriptions = active_count > 0
             subscriber.save()
