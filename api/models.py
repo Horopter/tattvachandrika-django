@@ -146,6 +146,7 @@ class Subscription(me.Document):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+        self.update_active_subscription_flag(self.subscriber)
 
     @classmethod
     def update_active_subscription_flag(cls, subscriber):
